@@ -21,6 +21,19 @@ source-repository head
 
 common common-options
   build-depends:       base ^>= 4.13.0.0
+                     , text
+                     , time
+                     , aeson
+                     , megaparsec
+
+  default-extensions:  DeriveAnyClass
+                     , DeriveGeneric
+                     , LambdaCase
+                     , MultiWayIf
+                     , OverloadedStrings
+                     , RecordWildCards
+                     , TupleSections
+                     , ViewPatterns
   
   ghc-options:         -Wall
                        -Wcompat
@@ -43,12 +56,15 @@ library
   import:              common-options
   hs-source-dirs:      src
   exposed-modules:     Tzdbjson
+  ghc-options:         -fwrite-ide-info
+                       -hiedir=.hie
 
 executable tzdbjson
   import:              common-options
   hs-source-dirs:      app
   main-is:             Main.hs
   build-depends:       tzdbjson
+                     , optparse-applicative
   ghc-options:         -threaded
                        -rtsopts
                        -with-rtsopts=-N

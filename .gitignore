@@ -33,6 +33,7 @@ stack.yaml.lock
 [._]sw[a-p]
 *~
 tags
+.hie
 
 # IntellijIDEA
 .idea/
