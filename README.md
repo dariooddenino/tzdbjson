@@ -4,4 +4,7 @@
 
 WIP cli app to convert tzdb files to json
 
-See README for more info
+- Build a json representation with more useful types / values
+- Transform the structure some how?
+- provide options for different outputs?
+
