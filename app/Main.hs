@@ -1,7 +1,7 @@
 module Main (main) where
 
-import Tzdbjson (someFunc)
+import Tzdbjson
 
 
 main :: IO ()
-main = someFunc
+main = pure ()

@@ -28,6 +28,7 @@ common common-options
 
   default-extensions:  DeriveAnyClass
                      , DeriveGeneric
+                     , DerivingStrategies
                      , LambdaCase
                      , MultiWayIf
                      , OverloadedStrings
@@ -56,6 +57,7 @@ library
   import:              common-options
   hs-source-dirs:      src
   exposed-modules:     Tzdbjson
+                     , Tzdbjson.Types
   ghc-options:         -fwrite-ide-info
                        -hiedir=.hie
 
@@ -76,17 +78,19 @@ test-suite tzdbjson-test
   main-is:             Spec.hs
   build-depends:       tzdbjson
                      , raw-strings-qq
+                     , hspec
+                     , hspec-megaparsec
   ghc-options:         -threaded
                        -rtsopts
                        -with-rtsopts=-N
 
-benchmark tzdbjson-benchmark
-  import:              common-options
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      benchmark
-  main-is:             Main.hs
-  build-depends:       gauge
-                     , tzdbjson
-  ghc-options:         -threaded
-                       -rtsopts
-                       -with-rtsopts=-N
+-- benchmark tzdbjson-benchmark
+--   import:              common-options
+--   type:                exitcode-stdio-1.0
+--   hs-source-dirs:      benchmark
+--   main-is:             Main.hs
+--   build-depends:       gauge
+--                      , tzdbjson
+--   ghc-options:         -threaded
+--                        -rtsopts
+--                        -with-rtsopts=-N
