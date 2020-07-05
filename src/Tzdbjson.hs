@@ -45,7 +45,9 @@ pTime = do
   h <- L.decimal
   _ <- char ':'
   m <- L.decimal
-  return $ h * 60 + m
+  -- TODO: add an optional seconds part
+  let s = 0
+  return $ (h * 60 + m) * 60 + s
 
 pWeekDay :: Parser Int
 pWeekDay = choice [ 1 <$ string "Mon"

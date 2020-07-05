@@ -85,9 +85,12 @@ main = hspec $ do
       parse' pRule rule3 `parseSatisfies` (\Rule{..} -> toYear == Nothing)
 
     it "parses at without letter" $ do
-      parse' pRule rule1 `parseSatisfies` (\Rule{..} -> at == At (23 * 60) 'w')
+      parse' pRule rule1 `parseSatisfies` (\Rule{..} -> at == At (23 * 60 * 60) 'w')
     it "parses at with a letter" $ do
-      parse' pRule rule2 `parseSatisfies` (\Rule{..} -> at == At (23 * 60) 's')
+      parse' pRule rule2 `parseSatisfies` (\Rule{..} -> at == At (23 * 60 * 60) 's')
+
+    it "parses the save field" $ do
+      parse' pRule rule1 `parseSatisfies` (\Rule{..} -> save == Just (1 * 60 * 60))
 
     it "parses a numeric day" $ do
       parse' pRule rule1 `parseSatisfies` (\Rule{..} -> day == Day (Just 14) Nothing Nothing)

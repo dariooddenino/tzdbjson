@@ -29,6 +29,7 @@ common common-options
   default-extensions:  DeriveAnyClass
                      , DeriveGeneric
                      , DerivingStrategies
+                     , DuplicateRecordFields
                      , LambdaCase
                      , MultiWayIf
                      , OverloadedStrings
