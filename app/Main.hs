@@ -1,6 +1,6 @@
 module Main (main) where
 
-import Tzdbjson
+-- import Tzdbjson
 
 
 main :: IO ()

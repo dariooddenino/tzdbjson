@@ -2,11 +2,9 @@
 module Main (main) where
 
 import           Data.Text             (Text)
-import           Data.Void
 import           Test.Hspec
 import           Test.Hspec.Megaparsec
 import           Text.Megaparsec
-import           Text.Megaparsec.Char
 import           Text.RawString.QQ
 import           Tzdbjson
 import           Tzdbjson.Types
@@ -44,8 +42,15 @@ rule1 = "Rule   Algeria   1921  only  -   Mar   14  23:00   1:00  S"
 rule2 :: Text
 rule2 = "Rule   Algeria   1921  1923  -   Jun   Sun  23:00s   0   -"
 rule3 :: Text
-rule3 = "Rule   Algeria   1939  max   -   Sep   11  23:00u   1:00  S"
+rule3 = "Rule   Algeria   1939  max   -   Sep   lastSun  23:00u   1:00  S"
+rule4 :: Text
+rule4 = "Rule   Algeria   1939  max   -   Sep   Sun>=12  23:00u   1:00  S"
+rule5 :: Text
+rule5 = "Rule   Algeria   1939  max   -   Sep   Mon<=3  23:00u   1:00  S"
 
+
+
+{-
 zones :: Text
 zones = [r|# more precise 0:09:21.
 # Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
@@ -62,14 +67,16 @@ Zone	Africa/Algiers	0:12:12 -	LMT	1891 Mar 15  0:01
 
 # Angola
 |]
+-}
 
+parse' :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
 parse' r' = parse r' ""
 
 main :: IO ()
 main = hspec $ do
   describe "Rules" $ do
-    -- it "parses a series of rules" $ do
-    --   parse' (many pRule) rules `parseSatisfies` ((== 22) . length)
+    it "parses a series of rules" $ do
+      parse' (many pRule) rules `parseSatisfies` ((== 22) . length)
     it "parses a 'only' end year" $ do
       parse' pRule rule1 `parseSatisfies` (\Rule{..} -> toYear == Just 1921)
     it "parses an ending year" $ do
@@ -86,3 +93,9 @@ main = hspec $ do
       parse' pRule rule1 `parseSatisfies` (\Rule{..} -> day == Day (Just 14) Nothing Nothing)
     it "parses a week day" $ do
       parse' pRule rule2 `parseSatisfies` (\Rule{..} -> day == Day Nothing (Just 7) Nothing)
+    it "parses lastSun" $ do
+      parse' pRule rule3 `parseSatisfies` (\Rule{..} -> day == Day Nothing (Just 7) (Just Last))
+    it "parses day after num" $ do
+      parse' pRule rule4 `parseSatisfies` (\Rule{..} -> day == Day (Just 12) (Just 7) (Just Gte))
+    it "parses day before num" $ do
+      parse' pRule rule5 `parseSatisfies` (\Rule{..} -> day == Day (Just 3) (Just 1) (Just Lte))

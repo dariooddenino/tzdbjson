@@ -47,15 +47,6 @@ pTime = do
   m <- L.decimal
   return $ h * 60 + m
 
-
--- a number
--- a day string (Mon, Tue, ...)
--- last + day string (lastSun)
--- first + day string (firstSun)
--- Sun>=n
--- Sun<=n
--- numer weekday operator
-
 pWeekDay :: Parser Int
 pWeekDay = choice [ 1 <$ string "Mon"
                   , 2 <$ string "Tue"
@@ -66,11 +57,29 @@ pWeekDay = choice [ 1 <$ string "Mon"
                   , 7 <$ string "Sun"
                   ]
 
+pOperator :: Parser Operator
+pOperator = choice [ First <$ string "first"
+                   , Last <$ string "last"
+                   , Gte <$ string ">="
+                   , Lte <$ string "<="
+                   ]
+
+
 pDay :: Parser Day
 pDay = do
   let pNum = (\n -> Day (Just n) Nothing Nothing) <$> L.decimal
-  let pWeek = (\n -> Day Nothing (Just n) Nothing) <$> pWeekDay
-  try pNum <|> pWeek
+      pWeek = (\n -> Day Nothing (Just n) Nothing) <$> pWeekDay
+      flDay = do
+        op <- pOperator
+        d <- pWeekDay
+        return $ Day Nothing (Just d) (Just op)
+      compDay = do
+        d <- pWeekDay
+        op <- pOperator
+        n <- L.decimal
+        return $ Day (Just n) (Just d) (Just op)
+
+  try compDay <|> try flDay <|> try pWeek <|> pNum
 
 
 pAt :: Parser At
