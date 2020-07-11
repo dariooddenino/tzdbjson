@@ -7,15 +7,20 @@ See README for more info
 -}
 
 module Tzdbjson.Types
-  ( Rule(..)
+  ( Rule_(..)
+  , Rule
   , At(..)
   , Day(..)
   , Operator(..)
+  , Until(..)
+  , Zone_(..)
+  , Zone
   ) where
 
 import           Data.Aeson   (ToJSON)
 import           Data.Text
 import           GHC.Generics
+import           Data.Map.Strict
 
 {-
 {
@@ -23,21 +28,22 @@ import           GHC.Generics
   "zones": { "zoneName": [`Zone`] }
 }
 -}
-
+type Name = Text
 
 -- | A data type defining a tzdb rule.
 -- Values and types are tweaked for simpler usage.
-data Rule = Rule { name     :: Text
-                 , fromYear :: Int
-                 , toYear   :: Maybe Int -- ^ Nothing means there's no end year (yet)
-                 , month    :: Int       -- ^ Starting at Jan == 1
-                 , day      :: Day
-                 , at       :: At
-                 , save     :: Maybe Int -- ^ Seconds
-                 , letter   :: Char
-                 }
+data Rule_ = Rule_ { fromYear :: Int
+                   , toYear   :: Maybe Int -- ^ Nothing means there's no end year (yet)
+                   , month    :: Int       -- ^ Starting at Jan == 1
+                   , day      :: Day
+                   , at       :: At
+                   , save     :: Maybe Int -- ^ Seconds
+                   , letter   :: Char
+                   }
   deriving stock (Eq, Show, Generic)
-instance ToJSON Rule
+instance ToJSON Rule_
+
+type Rule = (Name, Rule_)
 
 -- ^ The time at which the rule starts
 data At = At { time   :: Int    -- ^ Seconds after midnight
@@ -60,12 +66,21 @@ data Day = Day { number   :: Maybe Int -- ^ Day number
   deriving stock (Eq, Show, Generic)
 instance ToJSON Day
 
--- | A data type to define a zone
-data Zone = Zone { name :: Text -- ^ The zone name
-                 , stdoff :: Text -- ^ The standard offset in seconds from midnight in seconds
-                 , rule:: Text -- ^ The rule name or just an offset
-                 , format :: Text -- ^ The zone format
-                 , until :: Text -- ^ The date time until this zone is effective
-                 }
+data Until = Until { year :: Int
+                   , month :: Maybe Int
+                   , day :: Maybe Int
+                   , at :: Maybe At
+                   }
   deriving stock (Eq, Show, Generic)
-instance ToJSON Zone
+instance ToJSON Until
+
+-- | A data type to define a zone
+data Zone_ = Zone_  { stdoff :: Int -- ^ The standard offset in seconds from midnight in seconds
+                    , rule:: Maybe Text -- ^ The rule name or just an offset
+                    , format :: Text -- ^ The zone format
+                    , until :: Maybe Until -- ^ The date time until this zone is effective
+                    }
+  deriving stock (Eq, Show, Generic)
+instance ToJSON Zone_
+
+type Zone = Map Name [Zone_]

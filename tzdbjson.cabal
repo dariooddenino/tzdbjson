@@ -25,6 +25,7 @@ common common-options
                      , time
                      , aeson
                      , megaparsec
+                     , containers
 
   default-extensions:  DeriveAnyClass
                      , DeriveGeneric
