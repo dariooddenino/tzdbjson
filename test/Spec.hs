@@ -10,6 +10,8 @@ import           Text.RawString.QQ
 import           Tzdbjson
 import           Tzdbjson.Types
 
+
+
 rules :: Text
 rules = [r|Rule  Algeria   1916  only  -   Jun   14  23:00s  1:00  S
 Rule	Algeria	1916	1919	-	Oct	Sun	23:00	0	-
@@ -72,6 +74,15 @@ Zone  Africa/Algiers  0:12:12 -   LMT   1891 Mar 16 # hello
 # Angola
 |]
 
+szones :: Text
+szones = [r|# more precise
+Zone Africa/Algiers 0:12:12 - LMT 1891
+  0:09:21 - PMT 1911
+  0:00 Algeria WE%sT 1940
+  -1:00 Algeria CE%sT 1946
+  0:00 - WET 1956
+|]
+
 mlist :: Text
 mlist = [r|
 something zero #comment
@@ -115,12 +126,19 @@ main = hspec $ do
       parse' pRule rule5 `parseSatisfies` (\(_, Rule_{..}) -> day == Day (Just 3) (Just 1) (Just Lte))
 
   describe "Zones" $ do
-    it "parses the zone name" $ do
-      parse' pZoneName "Zone Atlantic/Cape_Verde" `parseSatisfies` ((==) "Atlantic/Cape_Verde")
+    -- it "parses the zone name" $ do
+    --   parse' pZoneName "Zone Atlantic/Cape_Verde" `parseSatisfies` ((==) "Atlantic/Cape_Verde")
 
-    it "parses the first zone line" $ do
-      parse' pZone zone1 `parseSatisfies` ((==) (singleton "Atlantic/Cape_Verde" [Zone_ (-5644) Nothing "LMT" (Just $ Until 1912 (Just 1) (Just 1) (Just $ At 7200 'u'))]))
+    -- it "parses an until with only a year" $ do
+    --   parse' pUntil "1911" `parseSatisfies` ((==) (Until 1911 1 1 (At 0 'w')))
+
+    -- it "parses an until without time" $ do
+    --   parse' pUntil "1922 Mar 10" `parseSatisfies` ((==) (Until 1922 3 10 (At 0 'w')))
+
+    -- it "parses the first zone line" $ do
+    --   parse' pZone zone1 `parseSatisfies` ((==) (singleton "Atlantic/Cape_Verde" [Zone_ (-5644) Nothing "LMT" (Just $ Until 1912 (Just 1) (Just 1) (Just $ At 7200 'u'))]))
 
     it "parses many zones" $ do
       -- parse' pItemList mlist `parseSatisfies` ((==) ("something", ["zero", "one", "two", "three"]))
-      parse' pZone zones `parseSatisfies` (\m -> (length <$> (m !? "Africa/Algiers")) == Just 10)
+      -- parse' pZone zones `parseSatisfies` (\m -> (length <$> (m !? "Africa/Algiers")) == Just 10)
+      parse' pZone szones `parseSatisfies` (\m -> (length <$> (m !? "Africa/Algiers")) == Just 5)

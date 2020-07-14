@@ -5,13 +5,13 @@ Maintainer: Dario Oddenino <branch13@gmail.com>
 
 See README for more info
 -}
-
+{-# LANGUAGE NoImplicitPrelude #-}
 module Tzdbjson
        ( Parser
        , pRule
        , pZoneName
        , pZone
-       , pItemList
+       , pUntil
        ) where
 
 import           Control.Monad              (void)
@@ -19,6 +19,7 @@ import           Data.Map.Strict            hiding (empty)
 import           Data.Maybe                 (fromMaybe, isJust)
 import           Data.Text                  (Text, pack)
 import           Data.Void
+import           Prelude                    hiding (until)
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -28,10 +29,22 @@ import           Tzdbjson.Types
 -- TODO rewrite using lexeme?
 -- https://markkarpov.com/tutorial/megaparsec.htm
 
+type Parser = Parsec Void Text
+
 lineComment :: Parser ()
 lineComment = L.skipLineComment "#"
 
-type Parser = Parsec Void Text
+scn :: Parser ()
+scn = L.space space1 lineComment empty
+
+sc :: Parser ()
+sc = L.space (void $ some (char ' ' <|> char '\t')) lineComment empty
+
+lexeme :: Parser a -> Parser a
+lexeme = L.lexeme sc
+
+symbol :: Text -> Parser Text
+symbol = L.symbol sc
 
 -- | Parses the ending year taking a default value.
 pToYear :: Int -> Parser (Maybe Int)
@@ -112,17 +125,17 @@ pSave = try (Just <$> pTime) <|> (char '0' *> pure Nothing)
 -- | Parses the whole rule.
 pRule :: Parser Rule
 pRule = do
-  _ <- string "Rule"
-  name <- space1 *> (pack <$> some alphaNumChar)
-  fromYear <- space1 *> L.decimal
-  toYear <- space1 *> pToYear fromYear
-  _ <- space1 *> char '-'
-  month <- space1 *> pMonth
-  day <- space1 *> pDay
-  at <- space1 *> pAt
-  save <- space1 *> pSave
-  letter <- space1 *> (try letterChar <|> char '-')
-  _ <- space *> optional eol
+  _ <- symbol "Rule"
+  name <- pack <$> lexeme (some alphaNumChar)
+  fromYear <- lexeme L.decimal
+  toYear <- lexeme $ pToYear fromYear
+  _ <- symbol "-"
+  month <- lexeme pMonth
+  day <- lexeme pDay
+  at <- lexeme pAt
+  save <- lexeme pSave
+  letter <- lexeme (letterChar <|> char '-')
+  _ <- optional eol
   return (name, Rule_{..})
 
 -- Zone parsing code.
@@ -132,33 +145,23 @@ pRule = do
 -- | Parses the UNTIL column for zones
 pUntil :: Parser Until
 pUntil = do
-  year <- L.decimal
-  month <- optional (space1 *> pMonth)
-  day <- optional (space1 *> L.decimal)
-  at <- optional (space1 *> pAt)
+  year <- lexeme L.decimal
+  month <- fromMaybe 1 <$> optional (lexeme pMonth)
+  day <- fromMaybe 1 <$> (optional (lexeme L.decimal))
+  at <- fromMaybe (At 0'w') <$> (optional (lexeme pAt))
   pure Until{..}
-
-scn :: Parser ()
-scn = L.space space1 lineComment empty
-
-sc :: Parser ()
-sc = L.space (void $ some (char ' ' <|> char '\t')) lineComment empty
-
-lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc
 
 -- | Parses the common section of a rule
 pZone_ :: Parser Zone_
-pZone_ = lexeme $ do
+pZone_ = do
   m <- optional (char '-')
-  stdoff' <- pTime
-  _ <- space1
-  rule <- (const Nothing <$> char '-') <|> (Just . pack <$> some alphaNumChar)
-  format <- space1 *> (pack <$> some alphaNumChar)
-  until <- space *> optional pUntil
+  stdoff' <- lexeme pTime
+  rule <- lexeme $ (const Nothing <$> char '-') <|> (Just . pack <$> some alphaNumChar)
+  format <- pack <$> (lexeme $ some (alphaNumChar <|> char '%'))
+  until <- Just <$> lexeme pUntil
+  -- _ <- optional eol
   let stdoff = if isJust m then (stdoff' * (-1)) else stdoff'
   pure Zone_{..}
-
 
 pZoneName :: Parser Text
 pZoneName = L.nonIndented scn (string "Zone" *> space1 *> (pack <$> some (alphaNumChar <|> char '/' <|> char '_')))
@@ -168,22 +171,22 @@ pZone :: Parser Zone
 pZone = L.nonIndented scn (L.indentBlock scn p)
   where
     p = do
-     name <- pZoneName
-     _ <- space1
+     name <- lexeme pZoneName
      z1 <- pZone_
      return (L.IndentMany Nothing (\zs -> return $ singleton name (z1 : zs)) pZone_)
 
-pItemList :: Parser (String, [String])
-pItemList = L.nonIndented scn (L.indentBlock scn p)
-  where
-    p = do
-      header <- pItem
-      f <- pItem
-      return (L.IndentMany Nothing (\vs -> return (header, f:vs)) pItem)
+-- pItemList :: Parser (String, [String])
+-- pItemList = L.nonIndented scn (L.indentBlock scn p)
+--   where
+--     p = do
+--       header <- pItem
+--       f <- pItem
+--       return (L.IndentMany Nothing (\vs -> return (header, f:vs)) pItem)
 
-pItem :: Parser String
-pItem = lexeme (some (alphaNumChar <|> char '-')) <?> "list item"
+-- pItem :: Parser String
+-- pItem = lexeme (some (alphaNumChar <|> char '-')) <?> "list item"
 
 -- parse each rule block as [(Name, Rule_)] ~> maybe better as Map Name [Rule_]
 -- parse all zones as Map Name [Zone_]
 -- at the end of the file regroup everything in two maps and parse to json
+

@@ -67,9 +67,9 @@ data Day = Day { number   :: Maybe Int -- ^ Day number
 instance ToJSON Day
 
 data Until = Until { year :: Int
-                   , month :: Maybe Int
-                   , day :: Maybe Int
-                   , at :: Maybe At
+                   , month :: Int
+                   , day :: Int
+                   , at :: At
                    }
   deriving stock (Eq, Show, Generic)
 instance ToJSON Until
