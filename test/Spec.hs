@@ -74,22 +74,41 @@ Zone  Africa/Algiers  0:12:12 -   LMT   1891 Mar 16 # hello
 # Angola
 |]
 
-szones :: Text
-szones = [r|# more precise
-Zone Africa/Algiers 0:12:12 - LMT 1891
-  0:09:21 - PMT 1911
-  0:00 Algeria WE%sT 1940
-  -1:00 Algeria CE%sT 1946
-  0:00 - WET 1956
+mixed = [r|
+# http://www.irishstatutebook.ie/eli/1926/sro/919/made/en/print
+# http://www.irishstatutebook.ie/eli/1947/sro/71/made/en/print
+
+# Rule	NAME	FROM	TO	TYPE	IN	ON	AT	SAVE	LETTER/S
+# Summer Time Act, 1916
+Rule	GB-Eire	1916	only	-	May	21	2:00s	1:00	BST
+Rule	GB-Eire	1916	only	-	Oct	 1	2:00s	0	GMT
+# S.R.&O. 1917, No. 358
+Rule	GB-Eire	1917	only	-	Apr	 8	2:00s	1:00	BST
+Rule	GB-Eire	1917	only	-	Sep	17	2:00s	0	GMT
+# S.R.&O. 1918, No. 274
+
+# Use Europe/London for Jersey, Guernsey, and the Isle of Man.
+
+# Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
+Zone	Europe/London	-0:01:15 -	LMT	1847 Dec  1  0:00s
+			 0:00	GB-Eire	%s	1968 Oct 27
+			 1:00	-	BST	1971 Oct 31  2:00u
+			 0:00	GB-Eire	%s	1996
+			 0:00	EU	GMT/BST
+
+# The following is like GB-Eire and EU, except with standard time in
+# summer and negative daylight saving time in winter.  It is for when
+# negative SAVE values are used.
+# Rule	NAME	FROM	TO	TYPE	IN	ON	AT	SAVE	LETTER/S
+Rule	Eire	1971	only	-	Oct	31	 2:00u	-1:00	-
+Rule	Eire	1972	1980	-	Mar	Sun>=16	 2:00u	0	-
+Rule	Eire	1972	1980	-	Oct	Sun>=23	 2:00u	-1:00	-
+Rule	Eire	1981	max	-	Mar	lastSun	 1:00u	0	-
+Rule	Eire	1981	1989	-	Oct	Sun>=23	 1:00u	-1:00	-
+Rule	Eire	1990	1995	-	Oct	Sun>=22	 1:00u	-1:00	-
+Rule	Eire	1996	max	-	Oct	lastSun	 1:00u	-1:00	-
 |]
 
-mlist :: Text
-mlist = [r|
-something zero #comment
-      one
-      two
-      three
-|]
 
 parse' :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
 parse' r' = parse r' ""
@@ -97,48 +116,51 @@ parse' r' = parse r' ""
 main :: IO ()
 main = hspec $ do
   describe "Rules" $ do
-    it "parses a series of rules" $ do
-      parse' (many pRule) rules `parseSatisfies` ((== 22) . length)
     it "parses a 'only' end year" $ do
-      parse' pRule rule1 `parseSatisfies` (\(_, Rule_{..}) -> toYear == Just 1921)
+      parse' pRule_ rule1 `parseSatisfies` (\(_, Rule_{..}) -> toYear == Just 1921)
     it "parses an ending year" $ do
-      parse' pRule rule2 `parseSatisfies` (\(_, Rule_{..}) -> toYear == Just 1923)
+      parse' pRule_ rule2 `parseSatisfies` (\(_, Rule_{..}) -> toYear == Just 1923)
     it "parses a missing ending year" $ do
-      parse' pRule rule3 `parseSatisfies` (\(_, Rule_{..}) -> toYear == Nothing)
+      parse' pRule_ rule3 `parseSatisfies` (\(_, Rule_{..}) -> toYear == Nothing)
 
     it "parses at without letter" $ do
-      parse' pRule rule1 `parseSatisfies` (\(_, Rule_{..}) -> at == At (23 * 60 * 60) 'w')
+      parse' pRule_ rule1 `parseSatisfies` (\(_, Rule_{..}) -> at == At (23 * 60 * 60) 'w')
     it "parses at with a letter" $ do
-      parse' pRule rule2 `parseSatisfies` (\(_, Rule_{..}) -> at == At (23 * 60 * 60) 's')
+      parse' pRule_ rule2 `parseSatisfies` (\(_, Rule_{..}) -> at == At (23 * 60 * 60) 's')
 
     it "parses the save field" $ do
-      parse' pRule rule1 `parseSatisfies` (\(_, Rule_{..}) -> save == Just (1 * 60 * 60))
+      parse' pRule_ rule1 `parseSatisfies` (\(_, Rule_{..}) -> save == Just (1 * 60 * 60))
 
     it "parses a numeric day" $ do
-      parse' pRule rule1 `parseSatisfies` (\(_, Rule_{..}) -> day == Day (Just 14) Nothing Nothing)
+      parse' pRule_ rule1 `parseSatisfies` (\(_, Rule_{..}) -> day == Day (Just 14) Nothing Nothing)
     it "parses a week day" $ do
-      parse' pRule rule2 `parseSatisfies` (\(_, Rule_{..}) -> day == Day Nothing (Just 7) Nothing)
+      parse' pRule_ rule2 `parseSatisfies` (\(_, Rule_{..}) -> day == Day Nothing (Just 7) Nothing)
     it "parses lastSun" $ do
-      parse' pRule rule3 `parseSatisfies` (\(_, Rule_{..}) -> day == Day Nothing (Just 7) (Just Last))
+      parse' pRule_ rule3 `parseSatisfies` (\(_, Rule_{..}) -> day == Day Nothing (Just 7) (Just Last))
     it "parses day after num" $ do
-      parse' pRule rule4 `parseSatisfies` (\(_, Rule_{..}) -> day == Day (Just 12) (Just 7) (Just Gte))
+      parse' pRule_ rule4 `parseSatisfies` (\(_, Rule_{..}) -> day == Day (Just 12) (Just 7) (Just Gte))
     it "parses day before num" $ do
-      parse' pRule rule5 `parseSatisfies` (\(_, Rule_{..}) -> day == Day (Just 3) (Just 1) (Just Lte))
+      parse' pRule_ rule5 `parseSatisfies` (\(_, Rule_{..}) -> day == Day (Just 3) (Just 1) (Just Lte))
+
+    it "parses a block of rules" $ do
+      parse' pRule rules `parseSatisfies` (\v -> length (snd v) == 22)
 
   describe "Zones" $ do
-    -- it "parses the zone name" $ do
-    --   parse' pZoneName "Zone Atlantic/Cape_Verde" `parseSatisfies` ((==) "Atlantic/Cape_Verde")
+    it "parses the zone name" $ do
+      parse' pZoneName "Zone Atlantic/Cape_Verde" `parseSatisfies` ((==) "Atlantic/Cape_Verde")
 
-    -- it "parses an until with only a year" $ do
-    --   parse' pUntil "1911" `parseSatisfies` ((==) (Until 1911 1 1 (At 0 'w')))
+    it "parses an until with only a year" $ do
+      parse' pUntil "1911" `parseSatisfies` ((==) (Until 1911 1 1 (At 0 'w')))
 
-    -- it "parses an until without time" $ do
-    --   parse' pUntil "1922 Mar 10" `parseSatisfies` ((==) (Until 1922 3 10 (At 0 'w')))
+    it "parses an until without time" $ do
+      parse' pUntil "1922 Mar 10" `parseSatisfies` ((==) (Until 1922 3 10 (At 0 'w')))
 
-    -- it "parses the first zone line" $ do
-    --   parse' pZone zone1 `parseSatisfies` ((==) (singleton "Atlantic/Cape_Verde" [Zone_ (-5644) Nothing "LMT" (Just $ Until 1912 (Just 1) (Just 1) (Just $ At 7200 'u'))]))
+    it "parses the first zone line" $ do
+      parse' pZone zone1 `parseSatisfies` ((==) ((,) "Atlantic/Cape_Verde" [Zone_ (-5644) Nothing "LMT" (Just $ Until 1912 1 1 (At 7200 'u'))]))
 
     it "parses many zones" $ do
-      -- parse' pItemList mlist `parseSatisfies` ((==) ("something", ["zero", "one", "two", "three"]))
-      -- parse' pZone zones `parseSatisfies` (\m -> (length <$> (m !? "Africa/Algiers")) == Just 10)
-      parse' pZone szones `parseSatisfies` (\m -> (length <$> (m !? "Africa/Algiers")) == Just 5)
+      parse' pZone zones `parseSatisfies` (\v -> length (snd v) == 10)
+
+  describe "Mixed" $ do
+    it "parses multiple rules blocks" $ do
+      parse' pTzdb mixed `parseSatisfies` ((==) ([], []))

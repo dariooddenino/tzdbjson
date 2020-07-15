@@ -8,14 +8,16 @@ See README for more info
 {-# LANGUAGE NoImplicitPrelude #-}
 module Tzdbjson
        ( Parser
+       , pRule_
        , pRule
        , pZoneName
        , pZone
        , pUntil
+       , pTzdb
        ) where
 
 import           Control.Monad              (void)
-import           Data.Map.Strict            hiding (empty)
+import           Data.Map.Strict            hiding (empty, foldl)
 import           Data.Maybe                 (fromMaybe, isJust)
 import           Data.Text                  (Text, pack)
 import           Data.Void
@@ -25,9 +27,7 @@ import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import           Tzdbjson.Types
 
-
--- TODO rewrite using lexeme?
--- https://markkarpov.com/tutorial/megaparsec.htm
+-- TODO: check LINK s. No idea of what they do
 
 type Parser = Parsec Void Text
 
@@ -123,10 +123,10 @@ pSave :: Parser (Maybe Int)
 pSave = try (Just <$> pTime) <|> (char '0' *> pure Nothing)
 
 -- | Parses the whole rule.
-pRule :: Parser Rule
-pRule = do
+pRule_ :: Parser (Name, Rule_)
+pRule_ = do
   _ <- symbol "Rule"
-  name <- pack <$> lexeme (some alphaNumChar)
+  name <- pack <$> lexeme (some (alphaNumChar <|> char '-'))
   fromYear <- lexeme L.decimal
   toYear <- lexeme $ pToYear fromYear
   _ <- symbol "-"
@@ -137,6 +137,12 @@ pRule = do
   letter <- lexeme (letterChar <|> char '-')
   _ <- optional eol
   return (name, Rule_{..})
+
+-- | Parses a Rules block
+pRule :: Parser Rule
+pRule = do
+  rules <- many $ lexeme pRule_
+  return $ sequence rules
 
 -- Zone parsing code.
 -- The last 4 columns are common to all rows, while the first two are present
@@ -158,8 +164,7 @@ pZone_ = do
   stdoff' <- lexeme pTime
   rule <- lexeme $ (const Nothing <$> char '-') <|> (Just . pack <$> some alphaNumChar)
   format <- pack <$> (lexeme $ some (alphaNumChar <|> char '%'))
-  until <- Just <$> lexeme pUntil
-  -- _ <- optional eol
+  until <- (Just <$> lexeme pUntil) <|> (Nothing <$ eol)
   let stdoff = if isJust m then (stdoff' * (-1)) else stdoff'
   pure Zone_{..}
 
@@ -173,20 +178,33 @@ pZone = L.nonIndented scn (L.indentBlock scn p)
     p = do
      name <- lexeme pZoneName
      z1 <- pZone_
-     return (L.IndentMany Nothing (\zs -> return $ singleton name (z1 : zs)) pZone_)
+     return (L.IndentMany Nothing (\zs -> return $ (,) name (z1 : zs)) pZone_)
 
--- pItemList :: Parser (String, [String])
--- pItemList = L.nonIndented scn (L.indentBlock scn p)
---   where
---     p = do
---       header <- pItem
---       f <- pItem
---       return (L.IndentMany Nothing (\vs -> return (header, f:vs)) pItem)
+ -- many (let one = myParser <|> (anyChar >> one) in one)
+-- solution = many loop
+--     where
+--         loop = myParser <|> (anyChar >> loop)
 
--- pItem :: Parser String
--- pItem = lexeme (some (alphaNumChar <|> char '-')) <?> "list item"
+-- hasItem = prefixItem <* (many anyChar)
+-- preafixItem = (try item) <|> (anyChar >> prefixItem)
+-- item = <parser for your item here>
 
--- parse each rule block as [(Name, Rule_)] ~> maybe better as Map Name [Rule_]
--- parse all zones as Map Name [Zone_]
--- at the end of the file regroup everything in two maps and parse to json
 
+-- NOTE: none of these work. I think I'm approaching this from the wrong angle completely.
+-- | Parsers a series of `Zone`s and `Rule`s and puts them together.
+pTzdb :: Parser ([Rule], [Zone])
+pTzdb = do
+  -- _ <- space
+  -- rules <- many $ L.nonIndented scn pRule
+  -- rules <- many (L.nonIndented scn pRule)
+  -- _ <- space <* newline
+  -- rules <- many (L.nonIndented scn pRule)
+  -- rules <- many $ skipManyTill (space <* eol) pRule
+  -- rules <- many pRule
+  -- zones <- many pZone
+  -- rules <- findAllCap (L.nonIndented scn pRule)
+  rules <- let one = many ($ L.nonIndented scn pRule) <|> (asciiChar >> one) in one
+  -- zones
+  -- <- many $ let one = (L.nonIndented scn pZone) <|> (asciiChar >> one) in one
+  -- _ <- eof
+  return (rules, [])

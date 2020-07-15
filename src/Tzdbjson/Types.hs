@@ -15,6 +15,7 @@ module Tzdbjson.Types
   , Until(..)
   , Zone_(..)
   , Zone
+  , Name
   ) where
 
 import           Data.Aeson   (ToJSON)
@@ -43,7 +44,7 @@ data Rule_ = Rule_ { fromYear :: Int
   deriving stock (Eq, Show, Generic)
 instance ToJSON Rule_
 
-type Rule = (Name, Rule_)
+type Rule = (Name, [Rule_])
 
 -- ^ The time at which the rule starts
 data At = At { time   :: Int    -- ^ Seconds after midnight
@@ -83,4 +84,4 @@ data Zone_ = Zone_  { stdoff :: Int -- ^ The standard offset in seconds from mid
   deriving stock (Eq, Show, Generic)
 instance ToJSON Zone_
 
-type Zone = Map Name [Zone_]
+type Zone = (Name, [Zone_])
