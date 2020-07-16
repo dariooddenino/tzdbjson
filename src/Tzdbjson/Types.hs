@@ -39,7 +39,7 @@ data Rule_ = Rule_ { fromYear :: Int
                    , day      :: Day
                    , at       :: At
                    , save     :: Maybe Int -- ^ Seconds
-                   , letter   :: Char
+                   , letter   :: Text -- TODO: dash could be Nothing?
                    }
   deriving stock (Eq, Show, Generic)
 instance ToJSON Rule_

@@ -133,15 +133,17 @@ pRule_ = do
   month <- lexeme pMonth
   day <- lexeme pDay
   at <- lexeme pAt
-  save <- lexeme pSave
-  letter <- lexeme (letterChar <|> char '-')
+  m <- optional (char '-')
+  save' <- lexeme pSave
+  letter <- pack <$> many (letterChar <|> char '-')
   _ <- optional eol
+  let save = if isJust m then ((* (-1)) <$> save') else save'
   return (name, Rule_{..})
 
 -- | Parses a Rules block
 pRule :: Parser Rule
 pRule = do
-  rules <- many $ lexeme pRule_
+  rules <- some $ lexeme pRule_
   return $ sequence rules
 
 -- Zone parsing code.
@@ -162,8 +164,8 @@ pZone_ :: Parser Zone_
 pZone_ = do
   m <- optional (char '-')
   stdoff' <- lexeme pTime
-  rule <- lexeme $ (const Nothing <$> char '-') <|> (Just . pack <$> some alphaNumChar)
-  format <- pack <$> (lexeme $ some (alphaNumChar <|> char '%'))
+  rule <- lexeme $ (const Nothing <$> char '-') <|> (Just . pack <$> some (alphaNumChar <|> char '-'))
+  format <- pack <$> (lexeme $ some (alphaNumChar <|> char '%' <|> char '/'))
   until <- (Just <$> lexeme pUntil) <|> (Nothing <$ eol)
   let stdoff = if isJust m then (stdoff' * (-1)) else stdoff'
   pure Zone_{..}
@@ -189,11 +191,32 @@ pZone = L.nonIndented scn (L.indentBlock scn p)
 -- preafixItem = (try item) <|> (anyChar >> prefixItem)
 -- item = <parser for your item here>
 
+-- skipEmptyLine :: Parser ()
+-- skipEmptyLine = do
+--   _ <- space
+--   _ <- optional eol
+--   pure ()
+
+-- skipEmptyOrCommentLines :: Parser ()
+-- skipEmptyOrCommentLines = skipMany ((try skipEmptyLine) <|> (lineComment <* optional eol))
 
 -- NOTE: none of these work. I think I'm approaching this from the wrong angle completely.
 -- | Parsers a series of `Zone`s and `Rule`s and puts them together.
 pTzdb :: Parser ([Rule], [Zone])
 pTzdb = do
+  -- _ <- try $ many (space <|> (() <$ (lineComment *> eol)))
+  -- skipEmptyLine
+  -- skipMany $ lineComment <* optional eol
+  -- skipEmptyLine
+  -- skipMany $ lineComment <* optional eol
+  -- skipEmptyOrCommentLines
+  -- _ <- space
+  -- _ <- many (lineComment *> eol)
+  -- _ <- space
+  -- _ <- many eol
+  -- rules <- some (L.nonIndented scn pRule)
+  -- zones <- pZone
+  -- rules' <- some (try $ pRule)
   -- _ <- space
   -- rules <- many $ L.nonIndented scn pRule
   -- rules <- many (L.nonIndented scn pRule)
@@ -203,8 +226,8 @@ pTzdb = do
   -- rules <- many pRule
   -- zones <- many pZone
   -- rules <- findAllCap (L.nonIndented scn pRule)
-  rules <- let one = many ($ L.nonIndented scn pRule) <|> (asciiChar >> one) in one
+  rules <- let one = many (L.nonIndented scn pRule) <|> (anySingle >> one) in one
   -- zones
   -- <- many $ let one = (L.nonIndented scn pZone) <|> (asciiChar >> one) in one
-  -- _ <- eof
+  _ <- eof
   return (rules, [])
