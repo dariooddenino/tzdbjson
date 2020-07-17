@@ -13,7 +13,6 @@ module Tzdbjson
        , pZoneName
        , pZone
        , pUntil
-       , pTzdb
        , pAllRules_
        , pAllZones
        ) where
