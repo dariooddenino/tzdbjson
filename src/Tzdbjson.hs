@@ -49,6 +49,10 @@ lexeme = L.lexeme sc
 symbol :: Text -> Parser Text
 symbol = L.symbol sc
 
+-- | Skips a whole line.
+skipLine :: Parser ()
+skipLine = () <$ manyTill anySingle newline
+
 -- | Parses the ending year taking a default value.
 pToYear :: Int -> Parser (Maybe Int)
 pToYear fromY = try (Just <$> L.decimal) <|> (string "only" *> pure (Just fromY)) <|> (string "max" *> pure Nothing)
@@ -154,9 +158,10 @@ pAllRules_ = pInner []
   where
     pInner :: [Rule] -> Parser [Rule]
     pInner acc =
-      ((try pRules_) >>= \r' -> pInner (acc ++ r'))
-      <|> ((try eof) >> pure acc)
-      <|> ((() <$ pZone <|> () <$ alphaNumChar <|> (() <$ newline) <|> lineComment <|> space1) >> pInner acc)
+      (try pRules_ >>= \r' -> pInner (acc ++ r'))
+      <|> (try eof >> pure acc)
+      <|> (skipLine >> pInner acc)
+      -- <|> ((() <$ pZone <|> () <$ alphaNumChar <|> (() <$ newline) <|> lineComment <|> space1) >> pInner acc)
 
 -- Zone parsing code.
 -- The last 4 columns are common to all rows, while the first two are present
@@ -173,7 +178,7 @@ pUntil = do
 
 -- | Parses the common section of a rule
 pZone_ :: Parser Zone_
-pZone_ = dbg "zone_" $ do
+pZone_ =do
   m <- optional (char '-')
   stdoff' <- lexeme pTime
   rule <- lexeme $ (const Nothing <$> char '-') <|> (Just . pack <$> some (alphaNumChar <|> char '-'))
@@ -187,75 +192,19 @@ pZoneName = L.nonIndented scn (string "Zone" *> space1 *> (pack <$> some (alphaN
 
 -- | Parses a Zones block
 pZone :: Parser Zone
-pZone = dbg "Zone" $ L.nonIndented scn (L.indentBlock scn p)
+pZone = L.nonIndented scn (L.indentBlock scn p)
   where
     p = do
-     name <- dbg "zone name" $ lexeme pZoneName
+     name <- lexeme pZoneName
      z1 <- pZone_
      return (L.IndentMany Nothing (\zs -> return $ (,) name (z1 : zs)) pZone_)
 
-skipLine :: Parser ()
-skipLine = dbg "skipline" $ () <$ manyTill anySingle newline
-
+-- | Parses all the zones in a file.
 pAllZones :: Parser [Zone]
 pAllZones = pInner []
   where
     pInner :: [Zone] -> Parser [Zone]
     pInner acc =
       (try pZone >>= \z' -> pInner (acc ++ [z']))
-      <|> (dbg "eof" (try eof) >> pure acc)
-      <|> ((skipLine <|> () <$ alphaNumChar <|> () <$ newline <|> lineComment <|> space1) >> pInner acc)
-
-
- -- many (let one = myParser <|> (anyChar >> one) in one)
--- solution = many loop
---     where
---         loop = myParser <|> (anyChar >> loop)
-
--- hasItem = prefixItem <* (many anyChar)
--- preafixItem = (try item) <|> (anyChar >> prefixItem)
--- item = <parser for your item here>
-
--- skipEmptyLine :: Parser ()
--- skipEmptyLine = do
---   _ <- space
---   _ <- optional eol
---   pure ()
-
--- skipEmptyOrCommentLines :: Parser ()
--- skipEmptyOrCommentLines = skipMany ((try skipEmptyLine) <|> (lineComment <* optional eol))
-
--- NOTE: none of these work. I think I'm approaching this from the wrong angle completely.
--- | Parsers a series of `Zone`s and `Rule`s and puts them together.
-pTzdb :: Parser ([(Name, Rule_)], [Zone])
-pTzdb = do
-  -- _ <- try $ many (space <|> (() <$ (lineComment *> eol)))
-  -- skipEmptyLine
-  -- skipMany $ lineComment <* optional eol
-  -- skipEmptyLine
-  -- skipMany $ lineComment <* optional eol
-  -- skipEmptyOrCommentLines
-  -- _ <- space
-  -- _ <- many (lineComment *> eol)
-  -- _ <- space
-  -- _ <- many eol
-  -- rules <- some (L.nonIndented scn pRule)
-  -- zones <- pZone
-  -- rules' <- some (try $ pRule)
-  -- _ <- space
-  -- rules <- many $ L.nonIndented scn pRule
-  -- rules <- many (L.nonIndented scn pRule)
-  -- _ <- space <* newline
-  -- rules <- many (L.nonIndented scn pRule)
-  -- rules <- many $ skipManyTill (space <* eol) pRule
-  -- rules <- many pRule
-  -- zones <- many pZone
-  -- rules <- findAllCap (L.nonIndented scn pRule)
-  -- rules <- let one = many (L.nonIndented scn pRule <|> (anySingle >> one) in one)
-  rules <- manyTill loop $ dbg "EOF" eof
-  -- zones
-  -- <- many $ let one = (L.nonIndented scn pZone) <|> (asciiChar >> one) in one
-  -- _ <- dbg "EOF" eof
-  return (concat rules, [])
-  where
-    loop = try pRules_ <|> (dbg "cont" (try (many alphaNumChar <* (() <$ newline <|> lineComment))) >> loop)
+      <|> (try eof >> pure acc)
+      <|> (skipLine >> pInner acc)
