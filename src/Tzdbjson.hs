@@ -9,11 +9,13 @@ See README for more info
 module Tzdbjson
        ( Parser
        , pRule_
-       , pRule
+       , pRules_
        , pZoneName
        , pZone
        , pUntil
        , pTzdb
+       , pAllRules_
+       , pAllZones
        ) where
 
 import           Control.Monad              (void)
@@ -25,6 +27,7 @@ import           Prelude                    hiding (until)
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
+import           Text.Megaparsec.Debug
 import           Tzdbjson.Types
 
 -- TODO: check LINK s. No idea of what they do
@@ -140,11 +143,20 @@ pRule_ = do
   let save = if isJust m then ((* (-1)) <$> save') else save'
   return (name, Rule_{..})
 
--- | Parses a Rules block
-pRule :: Parser Rule
-pRule = do
-  rules <- some $ lexeme pRule_
-  return $ sequence rules
+-- | Parses a Rules block until it finds an empty line or a comment line or end of file.
+pRules_ :: Parser [Rule]
+pRules_ =
+  someTill (L.nonIndented scn pRule_) (() <$ eof <|> () <$ newline <|> () <$ lineComment)
+
+-- | Parses all the rules in a file.
+pAllRules_ :: Parser [Rule]
+pAllRules_ = pInner []
+  where
+    pInner :: [Rule] -> Parser [Rule]
+    pInner acc =
+      ((try pRules_) >>= \r' -> pInner (acc ++ r'))
+      <|> ((try eof) >> pure acc)
+      <|> ((() <$ pZone <|> () <$ alphaNumChar <|> (() <$ newline) <|> lineComment <|> space1) >> pInner acc)
 
 -- Zone parsing code.
 -- The last 4 columns are common to all rows, while the first two are present
@@ -161,7 +173,7 @@ pUntil = do
 
 -- | Parses the common section of a rule
 pZone_ :: Parser Zone_
-pZone_ = do
+pZone_ = dbg "zone_" $ do
   m <- optional (char '-')
   stdoff' <- lexeme pTime
   rule <- lexeme $ (const Nothing <$> char '-') <|> (Just . pack <$> some (alphaNumChar <|> char '-'))
@@ -175,12 +187,25 @@ pZoneName = L.nonIndented scn (string "Zone" *> space1 *> (pack <$> some (alphaN
 
 -- | Parses a Zones block
 pZone :: Parser Zone
-pZone = L.nonIndented scn (L.indentBlock scn p)
+pZone = dbg "Zone" $ L.nonIndented scn (L.indentBlock scn p)
   where
     p = do
-     name <- lexeme pZoneName
+     name <- dbg "zone name" $ lexeme pZoneName
      z1 <- pZone_
      return (L.IndentMany Nothing (\zs -> return $ (,) name (z1 : zs)) pZone_)
+
+skipLine :: Parser ()
+skipLine = dbg "skipline" $ () <$ manyTill anySingle newline
+
+pAllZones :: Parser [Zone]
+pAllZones = pInner []
+  where
+    pInner :: [Zone] -> Parser [Zone]
+    pInner acc =
+      (try pZone >>= \z' -> pInner (acc ++ [z']))
+      <|> (dbg "eof" (try eof) >> pure acc)
+      <|> ((skipLine <|> () <$ alphaNumChar <|> () <$ newline <|> lineComment <|> space1) >> pInner acc)
+
 
  -- many (let one = myParser <|> (anyChar >> one) in one)
 -- solution = many loop
@@ -202,7 +227,7 @@ pZone = L.nonIndented scn (L.indentBlock scn p)
 
 -- NOTE: none of these work. I think I'm approaching this from the wrong angle completely.
 -- | Parsers a series of `Zone`s and `Rule`s and puts them together.
-pTzdb :: Parser ([Rule], [Zone])
+pTzdb :: Parser ([(Name, Rule_)], [Zone])
 pTzdb = do
   -- _ <- try $ many (space <|> (() <$ (lineComment *> eol)))
   -- skipEmptyLine
@@ -226,8 +251,11 @@ pTzdb = do
   -- rules <- many pRule
   -- zones <- many pZone
   -- rules <- findAllCap (L.nonIndented scn pRule)
-  rules <- let one = many (L.nonIndented scn pRule) <|> (anySingle >> one) in one
+  -- rules <- let one = many (L.nonIndented scn pRule <|> (anySingle >> one) in one)
+  rules <- manyTill loop $ dbg "EOF" eof
   -- zones
   -- <- many $ let one = (L.nonIndented scn pZone) <|> (asciiChar >> one) in one
-  _ <- eof
-  return (rules, [])
+  -- _ <- dbg "EOF" eof
+  return (concat rules, [])
+  where
+    loop = try pRules_ <|> (dbg "cont" (try (many alphaNumChar <* (() <$ newline <|> lineComment))) >> loop)

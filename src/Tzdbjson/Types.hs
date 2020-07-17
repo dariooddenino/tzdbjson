@@ -44,7 +44,7 @@ data Rule_ = Rule_ { fromYear :: Int
   deriving stock (Eq, Show, Generic)
 instance ToJSON Rule_
 
-type Rule = (Name, [Rule_])
+type Rule = (Name, Rule_)
 
 -- ^ The time at which the rule starts
 data At = At { time   :: Int    -- ^ Seconds after midnight

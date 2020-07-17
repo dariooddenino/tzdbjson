@@ -107,8 +107,14 @@ Rule	Eire	1981	max	-	Mar	lastSun	 1:00u	0	-
 Rule	Eire	1981	1989	-	Oct	Sun>=23	 1:00u	-1:00	-
 Rule	Eire	1990	1995	-	Oct	Sun>=22	 1:00u	-1:00	-
 Rule	Eire	1996	max	-	Oct	lastSun	 1:00u	-1:00	-
-|]
 
+
+Zone	Europe/London	-0:01:15 -	LMT	1847 Dec  1  0:00s
+			 0:00	GB-Eire	%s	1968 Oct 27
+			 1:00	-	BST	1971 Oct 31  2:00u
+			 0:00	GB-Eire	%s	1996
+			 0:00	EU	GMT/BST
+|]
 
 parse' :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
 parse' r' = parse r' ""
@@ -143,7 +149,7 @@ main = hspec $ do
       parse' pRule_ rule5 `parseSatisfies` (\(_, Rule_{..}) -> day == Day (Just 3) (Just 1) (Just Lte))
 
     it "parses a block of rules" $ do
-      parse' pRule rules `parseSatisfies` (\v -> length (snd v) == 22)
+      parse' pRules_ rules `parseSatisfies` (\v -> length v == 22)
 
   describe "Zones" $ do
     it "parses the zone name" $ do
@@ -163,4 +169,7 @@ main = hspec $ do
 
   describe "Mixed" $ do
     it "parses multiple rules blocks" $ do
-      parse' pTzdb mixed `parseSatisfies` ((==) ([], []))
+      parse' pAllRules_ mixed `parseSatisfies` (\v -> length v == 11)
+
+    it "parses multiple zones blocks" $ do
+      parse' pAllZones mixed `parseSatisfies` (\v -> length v == 2)
