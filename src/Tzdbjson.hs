@@ -208,3 +208,15 @@ pAllZones = pInner []
       (try pZone >>= \z' -> pInner (acc ++ [z']))
       <|> (try eof >> pure acc)
       <|> (skipLine >> pInner acc)
+
+-- pAllRules_ :: [Rule] ~> [(Name, Rule_)]
+-- pAllZones :: [Zone] ~> [(Name, [Zone_])]
+
+-- create a map for each
+-- convert to js
+
+-- create a function that takes an input and runs above
+
+-- createa function that opens a file and passes it to the above
+
+-- create the CLI part
