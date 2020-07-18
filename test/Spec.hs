@@ -1,6 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 module Main (main) where
 
+import           Data.Aeson
 import           Data.Map.Strict
 import           Data.Text             (Text)
 import           Test.Hspec
@@ -8,6 +9,7 @@ import           Test.Hspec.Megaparsec
 import           Text.Megaparsec
 import           Text.RawString.QQ
 import           Tzdbjson
+import           Tzdbjson.Parser
 import           Tzdbjson.Types
 
 
@@ -214,3 +216,12 @@ main = hspec $ do
 
     it "parses multiple links" $ do
       parse' pAllLinks mixed `parseSatisfies` (\v -> length v == 9)
+
+  describe "encodes" $ do
+    it "parse some stuff" $ do
+      let v = parse' pAllRules_ mixed
+      case v of
+        Right v' ->
+          encodeRegion v' `shouldBe` toJSON True
+        Left _ ->
+          error "Error"

@@ -24,12 +24,6 @@ import           Data.Text
 import           GHC.Generics
 import           Data.Map.Strict
 
-{-
-{
-  "rules": { "ruleName": [`Rule`] },
-  "zones": { "zoneName": [`Zone`] }
-}
--}
 type Name = Text
 
 -- | A data type defining a tzdb rule.

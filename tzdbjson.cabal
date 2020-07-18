@@ -24,6 +24,7 @@ common common-options
                      , text
                      , time
                      , aeson
+                     , bytestring
                      , megaparsec
                      , containers
 
@@ -60,6 +61,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Tzdbjson
                      , Tzdbjson.Types
+                     , Tzdbjson.Parser
   ghc-options:         -fwrite-ide-info
                        -hiedir=.hie
 
