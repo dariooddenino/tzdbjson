@@ -74,6 +74,26 @@ Zone  Africa/Algiers  0:12:12 -   LMT   1891 Mar 16 # hello
 # Angola
 |]
 
+links :: Text
+links = [r|
+# Côte d'Ivoire / Ivory Coast
+# Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
+Zone	Africa/Abidjan	-0:16:08 -	LMT	1912
+			 0:00	-	GMT
+hello
+Link Africa/Abidjan Africa/Bamako	# Mali
+Link Africa/Abidjan Africa/Banjul	# Gambia
+Link Africa/Abidjan Africa/Conakry	# Guinea
+Link Africa/Abidjan Africa/Dakar	# Senegal
+Link Africa/Abidjan Africa/Freetown	# Sierra Leone
+Link Africa/Abidjan Africa/Lome		# Togo
+Link Africa/Abidjan Africa/Nouakchott	# Mauritania
+Link Africa/Abidjan Africa/Ouagadougou	# Burkina Faso
+Link Africa/Abidjan Atlantic/St_Helena	# St Helena
+
+|]
+
+mixed :: Text
 mixed = [r|
 # http://www.irishstatutebook.ie/eli/1926/sro/919/made/en/print
 # http://www.irishstatutebook.ie/eli/1947/sro/71/made/en/print
@@ -107,6 +127,20 @@ Rule	Eire	1981	max	-	Mar	lastSun	 1:00u	0	-
 Rule	Eire	1981	1989	-	Oct	Sun>=23	 1:00u	-1:00	-
 Rule	Eire	1990	1995	-	Oct	Sun>=22	 1:00u	-1:00	-
 Rule	Eire	1996	max	-	Oct	lastSun	 1:00u	-1:00	-
+
+# Côte d'Ivoire / Ivory Coast
+# Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
+Zone	Africa/Abidjan	-0:16:08 -	LMT	1912
+			 0:00	-	GMT
+Link Africa/Abidjan Africa/Bamako	# Mali
+Link Africa/Abidjan Africa/Banjul	# Gambia
+Link Africa/Abidjan Africa/Conakry	# Guinea
+Link Africa/Abidjan Africa/Dakar	# Senegal
+Link Africa/Abidjan Africa/Freetown	# Sierra Leone
+Link Africa/Abidjan Africa/Lome		# Togo
+Link Africa/Abidjan Africa/Nouakchott	# Mauritania
+Link Africa/Abidjan Africa/Ouagadougou	# Burkina Faso
+Link Africa/Abidjan Atlantic/St_Helena	# St Helena
 
 
 Zone	Europe/London	-0:01:15 -	LMT	1847 Dec  1  0:00s
@@ -153,7 +187,7 @@ main = hspec $ do
 
   describe "Zones" $ do
     it "parses the zone name" $ do
-      parse' pZoneName "Zone Atlantic/Cape_Verde" `parseSatisfies` ((==) "Atlantic/Cape_Verde")
+      parse' pZoneHead "Zone Atlantic/Cape_Verde" `parseSatisfies` ((==) "Atlantic/Cape_Verde")
 
     it "parses an until with only a year" $ do
       parse' pUntil "1911" `parseSatisfies` ((==) (Until 1911 1 1 (At 0 'w')))
@@ -167,9 +201,16 @@ main = hspec $ do
     it "parses many zones" $ do
       parse' pZone zones `parseSatisfies` (\v -> length (snd v) == 10)
 
+  describe "Links" $ do
+    it "parses some links" $ do
+      parse' pAllLinks links `parseSatisfies` (\v -> length v == 9)
+
   describe "Mixed" $ do
     it "parses multiple rules blocks" $ do
       parse' pAllRules_ mixed `parseSatisfies` (\v -> length v == 11)
 
     it "parses multiple zones blocks" $ do
-      parse' pAllZones mixed `parseSatisfies` (\v -> length v == 2)
+      parse' pAllZones mixed `parseSatisfies` (\v -> length v == 3)
+
+    it "parses multiple links" $ do
+      parse' pAllLinks mixed `parseSatisfies` (\v -> length v == 9)

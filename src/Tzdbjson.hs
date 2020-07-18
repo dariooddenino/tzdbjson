@@ -10,11 +10,12 @@ module Tzdbjson
        ( Parser
        , pRule_
        , pRules_
-       , pZoneName
+       , pZoneHead
        , pZone
        , pUntil
        , pAllRules_
        , pAllZones
+       , pAllLinks
        ) where
 
 import           Control.Monad              (void)
@@ -160,7 +161,6 @@ pAllRules_ = pInner []
       (try pRules_ >>= \r' -> pInner (acc ++ r'))
       <|> (try eof >> pure acc)
       <|> (skipLine >> pInner acc)
-      -- <|> ((() <$ pZone <|> () <$ alphaNumChar <|> (() <$ newline) <|> lineComment <|> space1) >> pInner acc)
 
 -- Zone parsing code.
 -- The last 4 columns are common to all rows, while the first two are present
@@ -187,14 +187,17 @@ pZone_ =do
   pure Zone_{..}
 
 pZoneName :: Parser Text
-pZoneName = L.nonIndented scn (string "Zone" *> space1 *> (pack <$> some (alphaNumChar <|> char '/' <|> char '_')))
+pZoneName = pack <$> some (alphaNumChar <|> char '/' <|> char '_')
+
+pZoneHead :: Parser Text
+pZoneHead = L.nonIndented scn (symbol "Zone" *> pZoneName)
 
 -- | Parses a Zones block
 pZone :: Parser Zone
 pZone = L.nonIndented scn (L.indentBlock scn p)
   where
     p = do
-     name <- lexeme pZoneName
+     name <- lexeme pZoneHead
      z1 <- pZone_
      return (L.IndentMany Nothing (\zs -> return $ (,) name (z1 : zs)) pZone_)
 
@@ -219,3 +222,26 @@ pAllZones = pInner []
 -- createa function that opens a file and passes it to the above
 
 -- create the CLI part
+
+-- | Parses a single link
+pLink :: Parser Link
+pLink = do
+  _ <- symbol "Link"
+  from <- lexeme pZoneName
+  to <- lexeme pZoneName
+  return (from, to)
+
+pLinks :: Parser [Link]
+pLinks =
+  someTill (L.nonIndented sc pLink) (() <$ eof <|> () <$ newline <|> () <$ lineComment)
+
+-- | Parses all the links in a file.
+pAllLinks :: Parser [Link]
+pAllLinks = pInner []
+  where
+    pInner :: [Link] -> Parser [Link]
+    pInner acc =
+          (try pZone >> pInner acc)
+      <|> (try pLinks >>= \l' -> pInner (acc ++ l'))
+      <|> (try eof >> pure acc)
+      <|> (skipLine >> pInner acc)

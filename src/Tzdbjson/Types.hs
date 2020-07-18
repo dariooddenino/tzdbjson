@@ -16,6 +16,7 @@ module Tzdbjson.Types
   , Zone_(..)
   , Zone
   , Name
+  , Link
   ) where
 
 import           Data.Aeson   (ToJSON)
@@ -85,3 +86,6 @@ data Zone_ = Zone_  { stdoff :: Int -- ^ The standard offset in seconds from mid
 instance ToJSON Zone_
 
 type Zone = (Name, [Zone_])
+
+-- | Links a Zone to another one
+type Link = (Name, Name)
