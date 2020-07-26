@@ -17,11 +17,16 @@ module Tzdbjson.Types
   , Zone
   , Name
   , Link
+  , TzdbParseError(..)
   ) where
 
 import           Data.Aeson   (ToJSON)
 import           Data.Text
 import           GHC.Generics
+import           Text.Megaparsec.Error
+import           Data.Void
+
+data TzdbParseError = TzdbEmpty | TzdbError [ParseErrorBundle String Void]
 
 type Name = Text
 

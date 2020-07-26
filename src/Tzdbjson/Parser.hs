@@ -30,9 +30,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import           Text.Megaparsec.Debug
 import           Tzdbjson.Types
 
--- TODO: check LINK s. No idea of what they do
-
-type Parser = Parsec Void Text
+type Parser = Parsec Void String
 
 lineComment :: Parser ()
 lineComment = L.skipLineComment "#"
@@ -46,7 +44,7 @@ sc = L.space (void $ some (char ' ' <|> char '\t')) lineComment empty
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
 
-symbol :: Text -> Parser Text
+symbol :: String -> Parser String
 symbol = L.symbol sc
 
 -- | Skips a whole line.
@@ -233,21 +231,3 @@ pAllLinks = pInner []
       <|> (try pLinks >>= \l' -> pInner (acc ++ l'))
       <|> (try eof >> pure acc)
       <|> (skipLine >> pInner acc)
-
-{-|
-I want to convert this data to JSON : use argonaut
-I also want to convert it to PureScript data structures immediatly : use purescript bridge
--}
-
--- pAllRules_ :: [Rule] ~> [(Name, Rule_)]
--- pAllZones :: [Zone] ~> [(Name, [Zone_])]
--- pAllLinks :: [Link] ~> [(Name, Name)]
-
--- create a map for each
--- convert to js
-
--- create a function that takes an input and runs above
-
--- createa function that opens a file and passes it to the above
-
--- create the CLI part

@@ -9,14 +9,17 @@ See README for more info
 {-# LANGUAGE ScopedTypeVariables #-}
 module Tzdbjson where
 
-import           Control.Monad              (void)
+import           Control.Monad              (void, forM_)
 import           Data.Aeson
+import           Data.Bifunctor             (first)
 import           Data.ByteString.Lazy       (ByteString)
+import qualified Data.Either.Validation     as V
 import qualified Data.Map.Strict            as M
 import           Data.Maybe                 (fromMaybe, isJust)
 import           Data.Text                  (Text, pack)
 import           Data.Void
 import           Prelude                    hiding (until)
+import           System.IO                  (readFile)
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -26,8 +29,11 @@ import           Tzdbjson.Types
 
 
 {-|
-I want to convert this data to JSON : use argonaut
-I also want to convert it to PureScript data structures immediatly : use purescript bridge
+TODO: right now the parser ALWAYS succeed by just skipping malformed values.
+
+What I actually want is for it fail in case it's parsing a "valid" element
+
+I have NO idea of how to do this. Need HALP
 -}
 
 encodeAllRules_ :: [Rule] -> M.Map Name [Value]
@@ -41,10 +47,24 @@ encodeAllLinks :: [Link] -> M.Map Name Value
 encodeAllLinks = M.fromList . map (\(f, t) -> (t, toJSON f))
 
 encodeRegion :: [Rule] -> [Zone] -> [Link] -> Value
-encodeRegion rs zs ls =  -- toJSON . encodeAllRules_
+encodeRegion rs zs ls =
   let rs' = toJSON $ encodeAllRules_ rs
       zs' = toJSON $ encodeAllZones zs
       ls' = toJSON $ encodeAllLinks ls
   in object [ "rules" .= rs', "zones" .= zs', "links" .= ls' ]
 
+encodeFile :: String -> IO (V.Validation TzdbParseError ByteString)
+encodeFile filePath = do
+  fileContent <- readFile filePath
+  let parse' p = V.eitherToValidation $ first (\a -> [a]) $ parse p filePath fileContent
+  case (,,) <$> parse' pAllRules_ <*> parse' pAllZones <*> parse' pAllLinks of
+    V.Failure e            -> return $ V.Failure $ TzdbError e
+    V.Success ([], [], []) -> return $ V.Failure $ TzdbEmpty
+    V.Success (r', z', l') -> return $ V.Success $ encode $ encodeRegion r' z' l'
 
+-- | Prints all the errors
+printErrors :: FilePath -> TzdbParseError -> IO ()
+printErrors filePath TzdbEmpty =
+  putStrLn $ "WARNING: " <> filePath <> " contains no tzdb data."
+printErrors filePath (TzdbError errs) =
+  forM_ errs $ \e -> putStrLn $ "ERROR: " <> filePath <> " " <> errorBundlePretty e
