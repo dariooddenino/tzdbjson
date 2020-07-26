@@ -48,21 +48,3 @@ encodeRegion rs zs ls =  -- toJSON . encodeAllRules_
   in object [ "rules" .= rs', "zones" .= zs', "links" .= ls' ]
 
 
-
--- test zones
--- encode links
--- encode whole file in big single Value
--- start working on the CLI part
-
--- pAllRules_ :: [Rule] ~> [(Name, Rule_)]
--- pAllZones :: [Zone] ~> [(Name, [Zone_])]
--- pAllLinks :: [Link] ~> [(Name, Name)]
-
--- create a map for each
--- convert to js
-
--- create a function that takes an input and runs above
-
--- createa function that opens a file and passes it to the above
-
--- create the CLI part

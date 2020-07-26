@@ -22,7 +22,6 @@ module Tzdbjson.Types
 import           Data.Aeson   (ToJSON)
 import           Data.Text
 import           GHC.Generics
-import           Data.Map.Strict
 
 type Name = Text
 
