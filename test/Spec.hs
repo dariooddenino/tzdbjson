@@ -1,9 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 module Main (main) where
 
-import           Data.Aeson
-import           Data.Map.Strict
-import           Data.Text             (Text)
 import           Test.Hspec
 import           Test.Hspec.Megaparsec
 import           Text.Megaparsec
@@ -14,7 +11,7 @@ import           Tzdbjson.Types
 
 
 
-rules :: Text
+rules :: String
 rules = [r|Rule  Algeria   1916  only  -   Jun   14  23:00s  1:00  S
 Rule	Algeria	1916	1919	-	Oct	Sun	23:00	0	-
 Rule	Algeria	1917	only	-	Mar	24	23:00	1:00	S
@@ -41,25 +38,24 @@ Rule	Algeria	1980	only	-	Oct	31	 2:00	0	-
 # more precise 0:09:21.
 |]
 
-
-rule1 :: Text
+rule1 :: String
 rule1 = "Rule   Algeria   1921  only  -   Mar   14  23:00   1:00  S"
-rule2 :: Text
+rule2 :: String
 rule2 = "Rule   Algeria   1921  1923  -   Jun   Sun  23:00s   0   -"
-rule3 :: Text
+rule3 :: String
 rule3 = "Rule   Algeria   1939  max   -   Sep   lastSun  23:00u   1:00  S"
-rule4 :: Text
+rule4 :: String
 rule4 = "Rule   Algeria   1939  max   -   Sep   Sun>=12  23:00u   1:00  S"
-rule5 :: Text
+rule5 :: String
 rule5 = "Rule   Algeria   1939  max   -   Sep   Mon<=3  23:00u   1:00  S"
 
-zone1 :: Text
+zone1 :: String
 zone1 = [r|Zone Atlantic/Cape_Verde -1:34:04 -	LMT	1912 Jan 01  2:00u # Praia
 |]
 
 -- TODO this matches the first rule only :/
 -- Copy, and partially apply more elements until it works?
-zones :: Text
+zones :: String
 zones = [r|# more precise 0:09:21.
 # Zone  NAME    STDOFF  RULES   FORMAT  [UNTIL]
 Zone  Africa/Algiers  0:12:12 -   LMT   1891 Mar 16 # hello
@@ -76,7 +72,7 @@ Zone  Africa/Algiers  0:12:12 -   LMT   1891 Mar 16 # hello
 # Angola
 |]
 
-links :: Text
+links :: String
 links = [r|
 # Côte d'Ivoire / Ivory Coast
 # Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
@@ -95,7 +91,7 @@ Link Africa/Abidjan Atlantic/St_Helena	# St Helena
 
 |]
 
-mixed :: Text
+mixed :: String
 mixed = [r|
 # http://www.irishstatutebook.ie/eli/1926/sro/919/made/en/print
 # http://www.irishstatutebook.ie/eli/1947/sro/71/made/en/print
@@ -151,6 +147,64 @@ Zone	Europe/London	-0:01:15 -	LMT	1847 Dec  1  0:00s
 			 0:00	GB-Eire	%s	1996
 			 0:00	EU	GMT/BST
 |]
+
+mixed2 :: String
+mixed2 = [r|
+# http://www.irishstatutebook.ie/eli/1926/sro/919/made/en/print
+# http://www.irishstatutebook.ie/eli/1947/sro/71/made/en/print
+
+# Rule	NAME	FROM	TO	TYPE	IN	ON	AT	SAVE	LETTER/S
+# Summer Time Act, 1916
+Rule	GB-Eire	1916	only	-	May	21	2:00s	1:00	BST
+Rule	GB-Eire	1916	only	-	Oct	 1	2:00s	0	GMT
+# S.R.&O. 1917, No. 358
+Rule	GB-Eire	1917	only	-	Apr	 8	2:00s	1:00	BST
+Rule	GB-Eire	1917	only	-	Sep	17	2:00s	0	GMT
+# S.R.&O. 1918, No. 274
+
+# Use Europe/London for Jersey, Guernsey, and the Isle of Man.
+
+# Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
+Zone	Europe/London	-0:01:15 -	LMT	1847 Dec  1  0:00s
+			 0:00	GB-Eire	%s	1968 Oct 27
+			 1:00x	-	BST	1971 Oct 31  2:00u
+			 0:00	GB-Eire	%s	1996
+			 0:00	EU	GMT/BST
+
+# The following is like GB-Eire and EU, except with standard time in
+# summer and negative daylight saving time in winter.  It is for when
+# negative SAVE values are used.
+# Rule	NAME	FROM	TO	TYPE	IN	ON	AT	SAVE	LETTER/S
+Rule	Eire	1971	only	-	Oct	31	 2:00u	-1:00	-
+Rule	Eire	1972	1980	-	Mar-	Sun>=16	 2:00u	0	-
+Rule	Eire	1972	1980	-	Oct	Sun>=23	 2:00u	-1:00	-
+Rule	Eire	1981	max	-	Mar	lastSun	 1:00u	0	-
+Rule	Eire	1981	1989	-	Oct	Sun>=23	 1:00u	-1:00	-
+Rule	Eire	1990	1995	-	Oct	Sun>=22	 1:00u	-1:00	-
+Rule	Eire	1996	max	-	Oct	lastSun	 1:00u	-1:00	-
+
+# Côte d'Ivoire / Ivory Coast
+# Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
+Zone	Africa/Abidjan	-0:16:08 -	LMT	1912
+			 0:00	-	GMT
+Link Africa/Abidjan? Africa/Bamako	# Mali
+Link Africa/Abidjan Africa/Banjul	# Gambia
+Link Africa/Abidjan Africa/Conakry	# Guinea
+Link Africa/Abidjan Africa/Dakar	# Senegal
+Link Africa/Abidjan Africa/Freetown	# Sierra Leone
+Link Africa/Abidjan Africa/Lome		# Togo
+Link Africa/Abidjan Africa/Nouakchott	# Mauritania
+Link Africa/Abidjan Africa/Ouagadougou	# Burkina Faso
+Link Africa/Abidjan Atlantic/St_Helena	# St Helena
+
+
+Zone	Europe/London	-0:01:15 -	LMT	1847 Dec  1  0:00s
+			 0:00	GB-Eire	%s	1968 Oct 27
+			 1:00	-	BST	1971 Oct 31  2:00u
+			 0:00	GB-Eire	%s	1996
+			 0:00	EU	GMT/BST
+|]
+
 
 parse' :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
 parse' r' = parse r' ""
@@ -211,11 +265,20 @@ main = hspec $ do
     it "parses multiple rules blocks" $ do
       parse' pAllRules_ mixed `parseSatisfies` (\v -> length v == 11)
 
+    it "fails parsing multiple rules with an error" $ do
+      parse' pAllRules_ `shouldFailOn` mixed2
+
     it "parses multiple zones blocks" $ do
       parse' pAllZones mixed `parseSatisfies` (\v -> length v == 3)
 
+    it "fails parsing multiple zones with an error" $ do
+      parse' pAllZones `shouldFailOn` mixed2
+
     it "parses multiple links" $ do
       parse' pAllLinks mixed `parseSatisfies` (\v -> length v == 9)
+
+    it "fails parsing multiple links with an error" $ do
+      parse' pAllLinks `shouldFailOn` mixed2
 
   -- describe "encodes" $ do
   --   it "parse some stuff" $ do

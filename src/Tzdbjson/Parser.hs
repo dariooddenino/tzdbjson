@@ -19,7 +19,6 @@ module Tzdbjson.Parser
        ) where
 
 import           Control.Monad              (void)
-import           Data.Map.Strict            hiding (empty, foldl)
 import           Data.Maybe                 (fromMaybe, isJust)
 import           Data.Text                  (Text, pack)
 import           Data.Void
@@ -156,7 +155,7 @@ pAllRules_ = pInner []
   where
     pInner :: [Rule] -> Parser [Rule]
     pInner acc =
-      (try pRules_ >>= \r' -> pInner (acc ++ r'))
+      (try (lookAhead (symbol "Rule")) *> pRules_ >>= \r' -> pInner (acc ++ r'))
       <|> (try eof >> pure acc)
       <|> (skipLine >> pInner acc)
 
@@ -205,7 +204,7 @@ pAllZones = pInner []
   where
     pInner :: [Zone] -> Parser [Zone]
     pInner acc =
-      (try pZone >>= \z' -> pInner (acc ++ [z']))
+      (try (lookAhead $ symbol "Zone") *> pZone >>= \z' -> pInner (acc ++ [z']))
       <|> (try eof >> pure acc)
       <|> (skipLine >> pInner acc)
 
@@ -228,6 +227,6 @@ pAllLinks = pInner []
     pInner :: [Link] -> Parser [Link]
     pInner acc =
           (try pZone >> pInner acc)
-      <|> (try pLinks >>= \l' -> pInner (acc ++ l'))
+      <|> (try (lookAhead $ symbol "Link") *> pLinks >>= \l' -> pInner (acc ++ l'))
       <|> (try eof >> pure acc)
       <|> (skipLine >> pInner acc)
