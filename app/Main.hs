@@ -4,7 +4,6 @@ import qualified Data.ByteString.Lazy   as B
 import qualified Data.Either.Validation as V
 import           Options.Applicative
 import           Tzdbjson
-import           Tzdbjson.Types
 
 data Program
   = FileInput FilePath (Maybe FilePath)
