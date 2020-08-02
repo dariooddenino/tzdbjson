@@ -74,7 +74,7 @@ pMonth = choice [ 1 <$ string "Jan"
 pTime :: Parser Int
 pTime = do
   m <- optional (char '-')
-  t <- pTime'
+  t <- try pTime' <|> L.decimal
   return $ if isJust m then ((* (-1)) t) else t
   where
     pTime' = do
@@ -179,6 +179,10 @@ pUntil = do
 pRulename :: Parser (Maybe Text)
 pRulename = (const Nothing <$> char '-') <|> (Just . pack <$> some (alphaNumChar <|> char '-'))
 
+-- | Parses a Zone format
+pFormat :: Parser Text
+pFormat = pack <$> (some (alphaNumChar <|> char '%' <|> char '/' <|> char '-' <|> char '+'))
+
 -- | Parses the common section of a rule
 pZone_ :: Parser Zone_
 pZone_ = do
@@ -187,12 +191,13 @@ pZone_ = do
   rule <- if (isNothing offset)
     then lexeme pRulename
     else return Nothing
-  format <- pack <$> (lexeme $ some (alphaNumChar <|> char '%' <|> char '/' <|> char '-'))
+  format <- lexeme pFormat
+  -- format <- pack <$> (lexeme $ some (alphaNumChar <|> char '%' <|> char '/' <|> char '-'))
   until <- (Just <$> lexeme pUntil) <|> (Nothing <$ eol)
   pure Zone_{..}
 
 pZoneName :: Parser Text
-pZoneName = pack <$> some (alphaNumChar <|> char '/' <|> char '_')
+pZoneName = pack <$> some (alphaNumChar <|> char '/' <|> char '_' <|> char '-')
 
 pZoneHead :: Parser Text
 pZoneHead = L.nonIndented scn (symbol "Zone" *> pZoneName)
