@@ -76,7 +76,8 @@ instance ToJSON Until
 
 -- | A data type to define a zone
 data Zone_ = Zone_  { stdoff :: Int -- ^ The standard offset in seconds from midnight in seconds
-                    , rule:: Maybe Text -- ^ The rule name or just an offset
+                    , rule:: Maybe Text -- ^ The rule name or...
+                    , offset :: Maybe Int -- ^ A time offset
                     , format :: Text -- ^ The zone format
                     , until :: Maybe Until -- ^ The date time until this zone is effective
                     }

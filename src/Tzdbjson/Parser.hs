@@ -18,8 +18,8 @@ module Tzdbjson.Parser
        , pAllLinks
        ) where
 
-import           Control.Monad              (void)
-import           Data.Maybe                 (fromMaybe, isJust)
+import           Control.Monad              (void, join)
+import           Data.Maybe                 (fromMaybe, isJust, isNothing)
 import           Data.Text                  (Text, pack)
 import           Data.Void
 import           Prelude                    hiding (until)
@@ -73,11 +73,16 @@ pMonth = choice [ 1 <$ string "Jan"
 -- | The time in seconds.
 pTime :: Parser Int
 pTime = do
-  h <- L.decimal
-  _ <- char ':'
-  m <- L.decimal
-  s <- optional (char ':' *> L.decimal)
-  return $ (h * 60 + m) * 60 + (fromMaybe 0 s)
+  m <- optional (char '-')
+  t <- pTime'
+  return $ if isJust m then ((* (-1)) t) else t
+  where
+    pTime' = do
+      h <- L.decimal
+      _ <- char ':'
+      m <- L.decimal
+      s <- optional (char ':' *> L.decimal)
+      return $ (h * 60 + m) * 60 + (fromMaybe 0 s)
 
 -- | Parses the weekday returning an Int between 1 and 7.
 pWeekDay :: Parser Int
@@ -137,11 +142,9 @@ pRule_ = do
   month <- lexeme pMonth
   day <- lexeme pDay
   at <- lexeme pAt
-  m <- optional (char '-')
-  save' <- lexeme pSave
+  save <- lexeme pSave
   letter <- pack <$> many (letterChar <|> char '-')
   _ <- optional eol
-  let save = if isJust m then ((* (-1)) <$> save') else save'
   return (name, Rule_{..})
 
 -- | Parses a Rules block until it finds an empty line or a comment line or end of file.
@@ -172,15 +175,20 @@ pUntil = do
   at <- fromMaybe (At 0'w') <$> (optional (lexeme pAt))
   pure Until{..}
 
+-- | Parses a Zone's rulename
+pRulename :: Parser (Maybe Text)
+pRulename = (const Nothing <$> char '-') <|> (Just . pack <$> some (alphaNumChar <|> char '-'))
+
 -- | Parses the common section of a rule
 pZone_ :: Parser Zone_
-pZone_ =do
-  m <- optional (char '-')
-  stdoff' <- lexeme pTime
-  rule <- lexeme $ (const Nothing <$> char '-') <|> (Just . pack <$> some (alphaNumChar <|> char '-'))
-  format <- pack <$> (lexeme $ some (alphaNumChar <|> char '%' <|> char '/'))
+pZone_ = do
+  stdoff <- lexeme pTime
+  offset <- optional $ try $ lexeme pTime
+  rule <- if (isNothing offset)
+    then lexeme pRulename
+    else return Nothing
+  format <- pack <$> (lexeme $ some (alphaNumChar <|> char '%' <|> char '/' <|> char '-'))
   until <- (Just <$> lexeme pUntil) <|> (Nothing <$ eol)
-  let stdoff = if isJust m then (stdoff' * (-1)) else stdoff'
   pure Zone_{..}
 
 pZoneName :: Parser Text

@@ -53,6 +53,10 @@ zone1 :: String
 zone1 = [r|Zone Atlantic/Cape_Verde -1:34:04 -	LMT	1912 Jan 01  2:00u # Praia
 |]
 
+zone2 :: String
+zone2 = [r|Zone Atlantic/Cape_Verde -1:34:04 1:00	LMT	1912 Jan 01  2:00u # Praia
+|]
+
 -- TODO this matches the first rule only :/
 -- Copy, and partially apply more elements until it works?
 zones :: String
@@ -70,6 +74,16 @@ Zone  Africa/Algiers  0:12:12 -   LMT   1891 Mar 16 # hello
       1:00  -   CET
 
 # Angola
+|]
+
+zones2 :: String
+zones2 = [r|
+# Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
+Zone Atlantic/Cape_Verde -1:34:04 -	LMT	1912 Jan 01  2:00u # Praia
+			-2:00	-	-02	1942 Sep
+			-2:00	1:00	-01	1945 Oct 15
+			-2:00	-	-02	1975 Nov 25  2:00
+			-1:00	-	-01
 |]
 
 links :: String
@@ -252,10 +266,16 @@ main = hspec $ do
       parse' pUntil "1922 Mar 10" `parseSatisfies` ((==) (Until 1922 3 10 (At 0 'w')))
 
     it "parses the first zone line" $ do
-      parse' pZone zone1 `parseSatisfies` ((==) ((,) "Atlantic/Cape_Verde" [Zone_ (-5644) Nothing "LMT" (Just $ Until 1912 1 1 (At 7200 'u'))]))
+      parse' pZone zone1 `parseSatisfies` ((==) ((,) "Atlantic/Cape_Verde" [Zone_ (-5644) Nothing Nothing "LMT" (Just $ Until 1912 1 1 (At 7200 'u'))]))
+
+    it "parses a zone with an offset" $ do
+      parse' pZone zone2 `parseSatisfies` ((==) ((,) "Atlantic/Cape_Verde" [Zone_ (-5644) Nothing (Just 3600) "LMT" (Just $ Until 1912 1 1 (At 7200 'u'))]))
 
     it "parses many zones" $ do
       parse' pZone zones `parseSatisfies` (\v -> length (snd v) == 10)
+
+    it "parses cape verde zones" $ do
+      parse' pZone zones2 `parseSatisfies` (\v -> length (snd v) == 5)
 
   describe "Links" $ do
     it "parses some links" $ do
