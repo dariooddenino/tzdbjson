@@ -38,6 +38,34 @@ Rule	Algeria	1980	only	-	Oct	31	 2:00	0	-
 # more precise 0:09:21.
 |]
 
+rules2 :: String
+rules2 = [r|# Rule	NAME	FROM	TO	TYPE	IN	ON	AT	SAVE	LETTER/S
+Rule	Russia	1917	only	-	Jul	 1	23:00	1:00	MST  # Moscow Summer Time
+#
+# Decree No. 142 (1917-12-22) http://istmat.info/node/28137
+Rule	Russia	1917	only	-	Dec	28	 0:00	0	MMT  # Moscow Mean Time
+#
+# Decree No. 497 (1918-05-30) http://istmat.info/node/30001
+Rule	Russia	1918	only	-	May	31	22:00	2:00	MDST # Moscow Double Summer Time
+Rule	Russia	1918	only	-	Sep	16	 1:00	1:00	MST
+#
+# Decree No. 258 (1919-05-29) http://istmat.info/node/37949
+Rule	Russia	1919	only	-	May	31	23:00	2:00	MDST
+#
+Rule	Russia	1919	only	-	Jul	 1	 0:00u	1:00	MSD
+Rule	Russia	1919	only	-	Aug	16	 0:00	0	MSK
+#
+# Decree No. 63 (1921-02-03) http://istmat.info/node/45840
+Rule	Russia	1921	only	-	Feb	14	23:00	1:00	MSD
+#
+# Decree No. 121 (1921-03-07) http://istmat.info/node/45949
+Rule	Russia	1921	only	-	Mar	20	23:00	2:00	MSD
+#
+Rule	Russia	1921	only	-	Sep	 1	 0:00	1:00	MSD
+Rule	Russia	1921	only	-	Oct	 1	 0:00	0	-
+
+|]
+
 rule1 :: String
 rule1 = "Rule   Algeria   1921  only  -   Mar   14  23:00   1:00  S"
 rule2 :: String
@@ -84,6 +112,14 @@ Zone Atlantic/Cape_Verde -1:34:04 -	LMT	1912 Jan 01  2:00u # Praia
 			-2:00	1:00	-01	1945 Oct 15
 			-2:00	-	-02	1975 Nov 25  2:00
 			-1:00	-	-01
+|]
+
+zones3 :: String
+zones3 = [r|
+# Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
+Zone	Africa/Bissau	-1:02:20 -	LMT	1912 Jan  1  1:00u
+			-1:00	-	-01	1975
+			 0:00	-	GMT
 |]
 
 links :: String
@@ -254,6 +290,8 @@ main = hspec $ do
 
     it "parses a block of rules" $ do
       parse' pRules_ rules `parseSatisfies` (\v -> length v == 22)
+    it "parses russia rules" $ do
+      parse' pAllRules_ rules2 `parseSatisfies` (\v -> length v == 2)
 
   describe "Zones" $ do
     it "parses the zone name" $ do
@@ -276,6 +314,9 @@ main = hspec $ do
 
     it "parses cape verde zones" $ do
       parse' pZone zones2 `parseSatisfies` (\v -> length (snd v) == 5)
+     
+    it "parses another zones" $ do
+      parse' pZone zones3 `parseSatisfies` (\v -> length (snd v) == 3)
 
   describe "Links" $ do
     it "parses some links" $ do

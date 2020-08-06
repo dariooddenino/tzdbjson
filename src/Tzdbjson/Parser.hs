@@ -6,6 +6,7 @@ Maintainer: Dario Oddenino <branch13@gmail.com>
 See README for more info
 -}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE GADTs #-}
 module Tzdbjson.Parser
        ( Parser
        , pRule_
@@ -45,6 +46,51 @@ lexeme = L.lexeme sc
 
 symbol :: String -> Parser String
 symbol = L.symbol sc
+
+-- | A custom implementation which accepts indentation > than the initial value.
+indentBlock :: (MonadParsec e s m, Token s ~ Char)
+  => m ()              -- ^ How to consume indentation (white space)
+  -> m (L.IndentOpt m a b) -- ^ How to parse “reference” token
+  -> m a
+indentBlock sc r = do
+  sc
+  ref <- L.indentLevel
+  a   <- r
+  case a of
+    L.IndentNone x -> x <$ sc
+    L.IndentMany indent f p -> do
+      mlvl <- (optional . try) (eol *> L.indentGuard sc GT ref)
+      done <- isJust <$> optional eof
+      case (mlvl, done) of
+        (Just lvl, False) ->
+          indentedItems ref (fromMaybe lvl indent) sc p >>= f
+        _ -> sc *> f []
+    L.IndentSome indent f p -> do
+      pos <- eol *> L.indentGuard sc GT ref
+      let lvl = fromMaybe pos indent
+      x <- if | pos <= ref -> L.incorrectIndent GT ref pos
+              | otherwise -> p
+      xs  <- indentedItems ref lvl sc p
+      f (x:xs)
+{-# INLINEABLE indentBlock #-}
+
+indentedItems :: MonadParsec e s m
+  => Pos               -- ^ Reference indentation level
+  -> Pos               -- ^ Level of the first indented item ('lookAhead'ed)
+  -> m ()              -- ^ How to consume indentation (white space)
+  -> m b               -- ^ How to parse indented tokens
+  -> m [b]
+indentedItems ref lvl sc p = go
+  where
+    go = do
+      sc
+      pos  <- L.indentLevel
+      done <- isJust <$> optional eof
+      if done
+        then return []
+        else if | pos <= ref -> return []
+                | otherwise -> (:) <$> p <*> go
+
 
 -- | Skips a whole line.
 skipLine :: Parser ()
@@ -158,7 +204,7 @@ pAllRules_ = pInner []
   where
     pInner :: [Rule] -> Parser [Rule]
     pInner acc =
-      (try (lookAhead (symbol "Rule")) *> pRules_ >>= \r' -> pInner (acc ++ r'))
+      (try (lookAhead (symbol "Rule")) *> (dbg "rules" pRules_) >>= \r' -> pInner (acc ++ r'))
       <|> (try eof >> pure acc)
       <|> (skipLine >> pInner acc)
 
@@ -188,11 +234,10 @@ pZone_ :: Parser Zone_
 pZone_ = do
   stdoff <- lexeme pTime
   offset <- optional $ try $ lexeme pTime
-  rule <- if (isNothing offset)
+  rule <- if isNothing offset
     then lexeme pRulename
     else return Nothing
   format <- lexeme pFormat
-  -- format <- pack <$> (lexeme $ some (alphaNumChar <|> char '%' <|> char '/' <|> char '-'))
   until <- (Just <$> lexeme pUntil) <|> (Nothing <$ eol)
   pure Zone_{..}
 
@@ -204,7 +249,7 @@ pZoneHead = L.nonIndented scn (symbol "Zone" *> pZoneName)
 
 -- | Parses a Zones block
 pZone :: Parser Zone
-pZone = L.nonIndented scn (L.indentBlock scn p)
+pZone = L.nonIndented scn (indentBlock scn p)
   where
     p = do
      name <- lexeme pZoneHead
