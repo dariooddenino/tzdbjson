@@ -1,4 +1,5 @@
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes         #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Main (main) where
 
 import           Test.Hspec
@@ -59,11 +60,18 @@ Rule	Russia	1919	only	-	Aug	16	 0:00	0	MSK
 Rule	Russia	1921	only	-	Feb	14	23:00	1:00	MSD
 #
 # Decree No. 121 (1921-03-07) http://istmat.info/node/45949
-Rule	Russia	1921	only	-	Mar	20	23:00	2:00	MSD
+Rule	Russia	1921	only	-	Mar	20	23:00	2:00	+05
 #
 Rule	Russia	1921	only	-	Sep	 1	 0:00	1:00	MSD
 Rule	Russia	1921	only	-	Oct	 1	 0:00	0	-
 
+|]
+
+
+rules3 :: String
+rules3 = [r|
+Rule	Eire	1972	1980	-	Mar	Sun>=16	 2:00u	0	-
+Rule	Eire	1972	1980	-	Oct	Sun<=23	 2:00u	-1:00	-
 |]
 
 rule1 :: String
@@ -82,7 +90,7 @@ zone1 = [r|Zone Atlantic/Cape_Verde -1:34:04 -	LMT	1912 Jan 01  2:00u # Praia
 |]
 
 zone2 :: String
-zone2 = [r|Zone Atlantic/Cape_Verde -1:34:04 1:00	LMT	1912 Jan 01  2:00u # Praia
+zone2 = [r|Zone Atlantic/Cape_Verde -1:34:04 1:00	LMT	1912 Jan lastSun  2:00u # Praia
 |]
 
 -- TODO this matches the first rule only :/
@@ -120,6 +128,26 @@ zones3 = [r|
 Zone	Africa/Bissau	-1:02:20 -	LMT	1912 Jan  1  1:00u
 			-1:00	-	-01	1975
 			 0:00	-	GMT
+|]
+
+zones4 :: String
+zones4 = [r|
+# Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
+Zone	Europe/Riga	1:36:34	-	LMT	1880
+			1:36:34	-	RMT	1918 Apr 15  2:00 # Riga MT
+			1:36:34	1:00	LST	1918 Sep 16  3:00 # Latvian ST
+			1:36:34	-	RMT	1919 Apr  1  2:00
+			1:36:34	1:00	LST	1919 May 22  3:00
+			1:36:34	-	RMT	1926 May 11
+			2:00	-	EET	1940 Aug  5
+			3:00	-	MSK	1941 Jul
+			1:00	C-Eur	CE%sT	1944 Oct 13
+			3:00	Russia	MSK/MSD	1989 Mar lastSun  2:00s
+			2:00	1:00	EEST	1989 Sep lastSun  2:00s
+			2:00	Latvia	EE%sT	1997 Jan 21
+			2:00	EU	EE%sT	2000 Feb 29
+			2:00	-	EET	2001 Jan  2
+			2:00	EU	EE%sT
 |]
 
 links :: String
@@ -290,33 +318,40 @@ main = hspec $ do
 
     it "parses a block of rules" $ do
       parse' pRules_ rules `parseSatisfies` (\v -> length v == 22)
+
     it "parses russia rules" $ do
-      parse' pAllRules_ rules2 `parseSatisfies` (\v -> length v == 2)
+      parse' pAllRules_ rules2 `parseSatisfies` (\v -> length v == 11)
+
+    it "parses rules with comparators" $ do
+      parse' pAllRules_ rules3 `parseSatisfies` (\rs -> map (\(_, Rule_{..}) -> day) rs == [Day (Just 16) (Just 7) (Just Gte), Day (Just 23) (Just 7) (Just Lte)])
 
   describe "Zones" $ do
     it "parses the zone name" $ do
       parse' pZoneHead "Zone Atlantic/Cape_Verde" `parseSatisfies` ((==) "Atlantic/Cape_Verde")
 
     it "parses an until with only a year" $ do
-      parse' pUntil "1911" `parseSatisfies` ((==) (Until 1911 1 1 (At 0 'w')))
+      parse' pUntil "1911" `parseSatisfies` ((==) (Until 1911 1 (Day (Just 1) Nothing Nothing) (At 0 'w')))
 
     it "parses an until without time" $ do
-      parse' pUntil "1922 Mar 10" `parseSatisfies` ((==) (Until 1922 3 10 (At 0 'w')))
+      parse' pUntil "1922 Mar 10" `parseSatisfies` ((==) (Until 1922 3 (Day (Just 10) Nothing Nothing) (At 0 'w')))
 
     it "parses the first zone line" $ do
-      parse' pZone zone1 `parseSatisfies` ((==) ((,) "Atlantic/Cape_Verde" [Zone_ (-5644) Nothing Nothing "LMT" (Just $ Until 1912 1 1 (At 7200 'u'))]))
+      parse' pZone zone1 `parseSatisfies` ((==) ((,) "Atlantic/Cape_Verde" [Zone_ (-5644) Nothing Nothing "LMT" (Just $ Until 1912 1 (Day (Just 1) Nothing Nothing) (At 7200 'u'))]))
 
     it "parses a zone with an offset" $ do
-      parse' pZone zone2 `parseSatisfies` ((==) ((,) "Atlantic/Cape_Verde" [Zone_ (-5644) Nothing (Just 3600) "LMT" (Just $ Until 1912 1 1 (At 7200 'u'))]))
+      parse' pZone zone2 `parseSatisfies` ((==) ((,) "Atlantic/Cape_Verde" [Zone_ (-5644) Nothing (Just 3600) "LMT" (Just $ Until 1912 1 (Day Nothing (Just 7) (Just Last)) (At 7200 'u'))]))
 
     it "parses many zones" $ do
       parse' pZone zones `parseSatisfies` (\v -> length (snd v) == 10)
 
     it "parses cape verde zones" $ do
       parse' pZone zones2 `parseSatisfies` (\v -> length (snd v) == 5)
-     
+
     it "parses another zones" $ do
       parse' pZone zones3 `parseSatisfies` (\v -> length (snd v) == 3)
+
+    it "parses riga zones" $ do
+      parse' pZone zones4 `parseSatisfies` (\v -> length (snd v) == 15)
 
   describe "Links" $ do
     it "parses some links" $ do

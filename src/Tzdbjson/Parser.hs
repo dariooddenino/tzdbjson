@@ -189,7 +189,7 @@ pRule_ = do
   day <- lexeme pDay
   at <- lexeme pAt
   save <- lexeme pSave
-  letter <- pack <$> many (letterChar <|> char '-')
+  letter <- pack <$> many (alphaNumChar <|> char '-' <|> char '+')
   _ <- optional eol
   return (name, Rule_{..})
 
@@ -204,7 +204,7 @@ pAllRules_ = pInner []
   where
     pInner :: [Rule] -> Parser [Rule]
     pInner acc =
-      (try (lookAhead (symbol "Rule")) *> (dbg "rules" pRules_) >>= \r' -> pInner (acc ++ r'))
+      (try (lookAhead (symbol "Rule")) *> pRules_ >>= \r' -> pInner (acc ++ r'))
       <|> (try eof >> pure acc)
       <|> (skipLine >> pInner acc)
 
@@ -217,8 +217,9 @@ pUntil :: Parser Until
 pUntil = do
   year <- lexeme L.decimal
   month <- fromMaybe 1 <$> optional (lexeme pMonth)
-  day <- fromMaybe 1 <$> (optional (lexeme L.decimal))
-  at <- fromMaybe (At 0'w') <$> (optional (lexeme pAt))
+  day <- fromMaybe (Day (Just 1) Nothing Nothing) <$> (optional (lexeme pDay))
+  -- day <- fromMaybe 1 <$> (optional (lexeme L.decimal))
+  at <- fromMaybe (At 0 'w') <$> (optional (lexeme pAt))
   pure Until{..}
 
 -- | Parses a Zone's rulename

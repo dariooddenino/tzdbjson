@@ -68,7 +68,7 @@ instance ToJSON Day
 
 data Until = Until { year :: Int
                    , month :: Int
-                   , day :: Int
+                   , day :: Day
                    , at :: At
                    }
   deriving stock (Eq, Show, Generic)
