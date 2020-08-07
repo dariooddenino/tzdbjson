@@ -4,7 +4,9 @@
 
 WIP cli app to convert tzdb files to json
 
+## TODO:
 - Build a json representation with more useful types / values
 - Transform the structure some how?
 - provide options for different outputs?
+- Bug with zones following rules in australasia
 
